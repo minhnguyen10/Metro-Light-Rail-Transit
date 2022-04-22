@@ -13,9 +13,13 @@ library(tidyverse)
 library(rpart)
 library(randomForest)
 library(tree)
+library(rpart.plot)
+library(rattle)
 set.seed(1)
 
-tree_data <- processed_data[,c(28,65,86,88,180:191,196:203)]
+tree_data <- processed_data[,c(28,65,86,88,180:191,196,197,199:203)]
+col_names <- names(tree_data)
+tree_data[,col_names] <- lapply(tree_data[,col_names] , factor)
 
 train_ind <- sample(30491, 24393)
 tree_train <- tree_data[train_ind,]
@@ -23,46 +27,64 @@ tree_test <- tree_data[-train_ind,]
 ```
 
 Full tree, no pruning
-```{r}
-full_tree <- rpart(as.factor(Label) ~ ., data = tree_train)
+```{r, fig.height=20, fig.width=20}
+full_tree <- rpart(as.factor(Label) ~ ., data = tree_train, method = "class", xval = 10, cp = .001)
 
-printcp(full_tree)
+class_pred_ft <- table(predict(full_tree, type="class", newdata = tree_test), tree_test$Label)
+test_error_ft <- 1-sum(diag(class_pred_ft))/sum(class_pred_ft)
+```
+
+
+Pruned Tree
+```{r, fig.height=10, fig.width=10}
+pruned_tree <- rpart(as.factor(Label) ~ ., data = tree_train, method = "class", xval = 10, cp = .0044)
+
+# printcp(pruned_tree)
+# plotcp(pruned_tree)
+# summary(pruned_tree)
+
+class_pred_pt <- table(predict(pruned_tree, type="class", newdata = tree_test), tree_test$Label)
+test_error_pt <- 1-sum(diag(class_pred_pt))/sum(class_pred_pt)
+```
+Most Pruned
+```{r, fig.height=10, fig.width=10}
+prunedest_tree <- rpart(as.factor(Label) ~ ., data = tree_train, method = "class", xval = 10, cp = .015)
+
+# printcp(pruned_tree)
+# plotcp(pruned_tree)
+# summary(pruned_tree)
+
+
+class_pred_mpt <- table(predict(prunedest_tree, type="class", newdata = tree_test), tree_test$Label)
+test_error_mpt <- 1-sum(diag(class_pred_mpt))/sum(class_pred_mpt)
+```
+
+Results
+
+```{r, fig.height=10, fig.width=10}
+
+fancyRpartPlot(full_tree, caption = "Full Tree", cex = .6)
 plotcp(full_tree)
-summary(full_tree)
 
-plot(full_tree, uniform=TRUE,
-   main="Pruned Classification Tree for Kyphosis")
-text(full_tree, use.n=TRUE, all=TRUE, cex=.5)
+fancyRpartPlot(pruned_tree, caption = "Pruned Tree", cex = .6)
+plotcp(pruned_tree)
 
-full_tree_pred <- predict(full_tree, newdata = tree_test, type = "class")
+fancyRpartPlot(prunedest_tree, caption = "Pruned Tree", cex = .6)
 
-test_error <- sum(tree_test$Label != full_tree_pred) / length(full_tree_pred)
-```
+error_df <- data.frame(error = c(test_error_ft, test_error_pt, test_error_mpt),
+                       TreeType = c("Full Tree", "Pruned Tree", "Most Pruned Tree"))
 
+ggplot(data = error_df, aes(x = TreeType, y = error)) + 
+  geom_bar(stat = "identity") + 
+  scale_x_discrete(limits=c("Full Tree", "Pruned Tree", "Most Pruned Tree")) + 
+  theme_minimal() + 
+  labs(x = "Tree Type",
+       y = "Test Error",
+       title = "Test Error By Tree Type") + 
+  ylim(0,.3) + 
+  geom_text(aes(label=round(error,4)), vjust=1.6, color="white", size=6)
 
-Two different shrinkage parameters, both perform worse 
-```{r}
-pruned_tree1<- prune(full_tree, cp = .05)
-plot(pruned_tree1, uniform=TRUE,
-   main="Pruned Classification Tree for Kyphosis")
-text(pruned_tree1, use.n=TRUE, all=TRUE, cex=.5)
-
-pruned_tree2<- prune(full_tree, cp = .1)
-plot(pruned_tree2, uniform=TRUE,
-   main="Pruned Classification Tree for Kyphosis")
-text(pruned_tree2, use.n=TRUE, all=TRUE, cex=.5)
-
-
-prune_tree1_pred <- predict(pruned_tree1, newdata = tree_test, type = "class")
-prune_tree1_test_error <- sum(tree_test$Label != prune_tree1_pred) / length(prune_tree1_pred)
-
-prune_tree2_pred <- predict(pruned_tree2, newdata = tree_test, type = "class")
-prune_tree2_test_error <- sum(tree_test$Label != prune_tree2_pred) / length(prune_tree2_pred)
-```
-Random Forest
-```{r}
-rf <- randomForest(as.factor(Label) ~ .,data=tree_data, importance = T)
-
-rf
-importance(rf)
+class_pred_ft
+class_pred_pt
+class_pred_mpt
 ```
