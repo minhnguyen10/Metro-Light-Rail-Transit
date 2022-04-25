@@ -13,3 +13,7 @@ Discretized the four distances to transit. New variable has _Disc at the end (i.
 # 4-22
 
 Cleaned up decision trees. Got rid of rf since no interpretability. Two different levels of pruning. Better visualization of trees
+
+# 4-25 
+
+Added FNN 
