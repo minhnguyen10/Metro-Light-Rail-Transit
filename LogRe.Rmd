@@ -1,0 +1,140 @@
+---
+title: "LogisticReg"
+output:
+  pdf_document: default
+  html_document: default
+date: '2022-04-23'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(rpart)
+library(randomForest)
+library(tree)
+library(rpart.plot)
+library(rattle)
+set.seed(1)
+
+```
+
+# 1. Data Processing for model
+Loading in data and splitting 
+
+```{r}
+processed_data <- read.csv("processed_new.csv")
+tree_data <- processed_data[,c(28,65,86,88,180:191,196,197,199:203)]
+col_names <- names(tree_data)
+tree_data[,col_names] <- lapply(tree_data[,col_names] , factor)
+str(tree_data)
+```
+
+
+## 1.1 Data Exploration
+
+### ORIGIN_PLACE_TYPE and DESTIN_PLACE_TYPE 
+
+```{r}
+# plotting multiple bar plots
+ggplot(tree_data, aes(fill=Label, x = ORIGIN_PLACE_TYPE)) +
+  geom_bar(position="dodge") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0.5, size = rel(0.7)))
+```
+
+
+```{r}
+# plotting multiple bar plots
+ggplot(tree_data, aes(fill=Label, x = DESTIN_PLACE_TYPE)) +
+  geom_bar(position="dodge") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0.5, size = rel(0.7)))
+```
+
+- We can see that ORIGIN_PLACE_TYPE and DESTIN_PLACE_TYPE can be remove since they did not help separating the target
+
+
+
+```{r}
+# plotting multiple bar plots
+ggplot(tree_data, aes(fill=Label, x = Dest_Bus_Meter_Disc)) +
+  geom_bar(position="dodge") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=0.5, size = rel(0.7)))
+```
+- Season, trnsf
+- Orig_Rail_Meter_Disc can be cont? Maybe coreleated with Dest_Rail_Meter_Disc
+
+### Other
+
+- Converting the label to 0 and 1
+```{r}
+tree_data$Label = as.numeric(as.character(factor(tree_data$Label,
+                           levels = c('Bus', 'LRT'),
+                           labels = c(0, 1))))
+```
+
+```{r}
+library(InformationValue)
+factor_vars <- col_names[col_names != "b"]  # get all categorical variables
+all_iv <- data.frame(VARS=factor_vars, IV=numeric(length(factor_vars)), STRENGTH=character(length(factor_vars)), stringsAsFactors = F)  # init output dataframe
+for (factor_var in factor_vars){
+  all_iv[all_iv$VARS == factor_var, "IV"] <- InformationValue::IV(X=tree_data[, factor_var], Y=tree_data$Label)
+  all_iv[all_iv$VARS == factor_var, "STRENGTH"] <- attr(InformationValue::IV(X=tree_data[, factor_var], Y=tree_data$Label), "howgood")
+}
+all_iv[(all_iv$STRENGTH == "Highly Predictive") | (all_iv$STRENGTH == "Somewhat Predictive"), ]
+```
+
+
+# 2. Implement Logistic Regression model
+
+
+## Selecting those highly predictive column
+```{r}
+highpred <- all_iv[all_iv$STRENGTH == "Highly Predictive",]
+highpred_col_name <- highpred$VARS
+highpred_col_name <- c(highpred_col_name, "Label") #add abel
+selected_tree_data <- tree_data[,highpred_col_name]
+
+```
+
+```{r}
+train_ind <- sample(30491, 24393)
+tree_train <- selected_tree_data[train_ind,]
+tree_test <- selected_tree_data[-train_ind,]
+predictor_name <- highpred_col_name[highpred_col_name != "Label"]
+
+# tree_train <- tree_data[train_ind,]
+# tree_test <- tree_data[-train_ind,]
+# predictor_name <- col_names[col_names != "Label"]
+
+
+X_train <- tree_train[,predictor_name]
+X_test <- tree_test[,predictor_name]
+y_train <- tree_train$Label
+y_test <- tree_test$Label
+```
+
+```{r}
+logregressor = glm(formula = Label ~ .,
+                 family = binomial,
+                 data = tree_train)
+prob_pred_train = predict(logregressor, type = 'response', newdata = X_train)
+```
+
+```{r}
+y_pred_train_logr = ifelse(prob_pred_train > 0.5, 1, 0)
+
+prob_pred_test = predict(logregressor, type = 'response', newdata = tree_test)
+y_pred_test_logr = ifelse(prob_pred_test > 0.5, 1, 0)
+print(c(train_acc=mean(y_pred_train_logr==tree_train$Label), 
+        test_acc=mean(y_pred_test_logr==tree_test$Label)))
+```
+
+```{r}
+#Import required library
+library(caret)
+y_pred_test_logr <- factor(y_pred_test_logr)
+y_true <- factor(tree_test$Label)
+#Creating confusion matrix
+example <- confusionMatrix(data=y_pred_test_logr, reference = y_true,positive = "1")
+ 
+#Display results 
+example
+```
+
