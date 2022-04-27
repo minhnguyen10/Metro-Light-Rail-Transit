@@ -1,0 +1,32 @@
+---
+title: "EDA"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+tree_data <- processed_data[,c(28,65,86,88,180:191,196,197,199:203)]
+col_names <- names(tree_data)
+tree_data[,col_names] <- lapply(tree_data[,col_names] , factor)
+```
+
+```{r}
+dim(tree_data)[1]
+table(tree_data$Label) / dim(tree_data)[1]
+
+table(tree_data$Label,tree_data$Orig_Rail_Meter_Disc)
+table(tree_data$Label,tree_data$Dest_Rail_Meter_Disc)
+
+
+table(tree_data$Label,tree_data$Orig_Bus_Meter_Disc)
+table(tree_data$Label,tree_data$Dest_Bus_Meter_Disc)
+
+table(tree_data$Label,tree_data$SEASON) / rowSums(table(tree_data$Label,tree_data$SEASON))
+
+table(tree_data$Label,tree_data$TIME_PERIOD) / rowSums(table(tree_data$Label,tree_data$TIME_PERIOD))
+
+table(tree_data$SEASON,tree_data$Vehicle) / rowSums(table(tree_data$SEASON,tree_data$Vehicle))
+```
