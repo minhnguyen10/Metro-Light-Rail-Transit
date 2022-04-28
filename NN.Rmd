@@ -8,17 +8,96 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+library(tidyverse)
+library(rpart)
+library(randomForest)
+library(tree)
+library(rpart.plot)
+library(rattle)
 set.seed(1)
-
+#Disc Distance
 tree_data <- processed_data[,c(28,65,86,88,180:191,196,197,199:203)]
+label_ind <- 17
+
+# #Cont Distance
+# tree_data <- processed_data[,c(28,65,86,88,180:197,199)]
+# label_ind <- 21
+
 col_names <- names(tree_data)
 tree_data[,col_names] <- lapply(tree_data[,col_names] , factor)
-tree_data[,col_names] <- lapply(tree_data[,col_names] , as.integer)
-tree_data <- tree_data - 1
+
+# # Cont Distance
+# tree_data[,17] <- as.integer(tree_data[,17])
+# tree_data[,18] <- as.integer(tree_data[,18])
+# tree_data[,19] <- as.integer(tree_data[,19])
+# tree_data[,20] <- as.integer(tree_data[,20])
+
 
 train_ind <- sample(30491, 24393)
 tree_train <- tree_data[train_ind,]
 tree_test <- tree_data[-train_ind,]
+
+tree_data[,label_ind] <- as.numeric(tree_data[,label_ind]) - 1
+tree_train[,label_ind] <- as.numeric(tree_train[,label_ind]) - 1
+tree_test[,label_ind] <- as.numeric(tree_test[,label_ind]) - 1
+```
+
+
+```{r}
+set.seed(1)
+model <- keras_model_sequential() %>%
+  layer_dense(units = 64, activation = "relu", input_shape = c(22)) %>%
+  layer_dense(units = 2, activation = "softmax") 
+
+model %>% compile(
+  optimizer = "rmsprop",
+  loss = "categorical_crossentropy",
+  metrics = c("accuracy")
+)
+
+model %>% fit(x = data.matrix(tree_data[,-label_ind]),y = to_categorical(tree_data[,label_ind]), epochs=25, batch_size = 256, validation_split=.2)
+
+```
+
+```{r}
+library(keras)
+set.seed(1)
+
+model <- keras_model_sequential() %>%
+  layer_dense(units = 64, activation = "relu", input_shape = c(22)) %>%
+  layer_dense(units = 64, activation = "relu") %>% 
+  layer_dense(units = 2, activation = "softmax") 
+
+model %>% compile(
+  optimizer = "rmsprop",
+  loss = "categorical_crossentropy",
+  metrics = c("accuracy")
+)
+
+model %>% fit(x = data.matrix(tree_data[,-label_ind]),y = to_categorical(tree_data[,label_ind]), epochs=20, validation_split=.2, batch_size = 256)
+
+
+# model %>% evaluate(data.matrix(tree_test[,-label_ind]),  to_categorical(tree_test[,label_ind]), verbose = 1)
+
+#8126
+
+```
+
+```{r}
+set.seed(1)
+model <- keras_model_sequential() %>%
+  layer_dense(units = 128, activation = "relu", input_shape = c(22)) %>%
+  layer_dense(units = 2, activation = "softmax") 
+
+model %>% compile(
+  optimizer = "rmsprop",
+  loss = "categorical_crossentropy",
+  metrics = c("accuracy")
+)
+
+model %>% fit(x = data.matrix(tree_data[,-label_ind]),y = to_categorical(tree_data[,label_ind]), epochs=24, validation_split=.2)
+
+#test accuracu of .8185
 
 ```
 
@@ -28,45 +107,7 @@ set.seed(1)
 
 model <- keras_model_sequential() %>%
   layer_dense(units = 128, activation = "relu", input_shape = c(22)) %>%
-  layer_dense(units = 256, activation = "relu") %>% 
-  layer_dense(units = 2, activation = "softmax") 
-
-model %>% compile(
-  optimizer = "rmsprop",
-  loss = "categorical_crossentropy",
-  metrics = c("accuracy")
-)
-
-model %>% fit(x = data.matrix(tree_train[,-17]),y = to_categorical(tree_train[,17]), epochs=25, batch_size = 1024)
-model %>% evaluate(data.matrix(tree_test[,-17]),  to_categorical(tree_test[,17]), verbose = 1)
-
-```
-
-
-```{r}
-model <- keras_model_sequential() %>%
-  layer_dense(units = 64, activation = "relu", input_shape = c(22)) %>%
-  layer_dense(units = 2, activation = "softmax") 
-
-model %>% compile(
-  optimizer = "rmsprop",
-  loss = "categorical_crossentropy",
-  metrics = c("accuracy")
-)
-
-model %>% fit(x = data.matrix(tree_train[,-17]),y = to_categorical(tree_train[,17]), epochs=10, batch_size = 256)
-model %>% evaluate(data.matrix(tree_test[,-17]),  to_categorical(tree_test[,17]), verbose = 1)
-
-```
-
-```{r}
-library(keras)
-set.seed(1)
-
-model <- keras_model_sequential() %>%
-  layer_dense(units = 64, activation = "relu", input_shape = c(22)) %>%
   layer_dense(units = 128, activation = "relu") %>% 
-  layer_dense(units = 64, activation = "relu") %>% 
   layer_dense(units = 2, activation = "softmax") 
 
 model %>% compile(
@@ -75,30 +116,9 @@ model %>% compile(
   metrics = c("accuracy")
 )
 
-model %>% fit(x = data.matrix(tree_train[,-17]),y = to_categorical(tree_train[,17]), epochs=50, batch_size = 1024)
-model %>% evaluate(data.matrix(tree_test[,-17]),  to_categorical(tree_test[,17]), verbose = 1)
+model %>% fit(x = data.matrix(tree_data[,-label_ind]),y = to_categorical(tree_data[,label_ind]), epochs=50, batch_size = 256, validation_split=.2)
 
-```
 
-```{r}
-library(keras)
-set.seed(1)
-
-model <- keras_model_sequential() %>%
-  layer_dense(units = 64, activation = "relu", input_shape = c(22)) %>%
-  layer_dense(units = 128, activation = "relu") %>% 
-  layer_dense(units = 256, activation = "relu") %>% 
-  layer_dense(units = 128, activation = "relu") %>% 
-  layer_dense(units = 64, activation = "relu") %>% 
-  layer_dense(units = 2, activation = "softmax") 
-
-model %>% compile(
-  optimizer = "rmsprop",
-  loss = "categorical_crossentropy",
-  metrics = c("accuracy")
-)
-
-model %>% fit(x = data.matrix(tree_train[,-17]),y = to_categorical(tree_train[,17]), epochs=50, batch_size = 1024)
-model %>% evaluate(data.matrix(tree_test[,-17]),  to_categorical(tree_test[,17]), verbose = 1)
+model %>% evaluate(data.matrix(tree_test[,-label_ind]),  to_categorical(tree_test[,label_ind]), verbose = 1)
 
 ```
