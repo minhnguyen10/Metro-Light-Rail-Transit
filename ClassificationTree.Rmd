@@ -16,10 +16,19 @@ library(tree)
 library(rpart.plot)
 library(rattle)
 set.seed(1)
-
+#Disc Distance
 tree_data <- processed_data[,c(28,65,86,88,180:191,196,197,199:203)]
+#Cont Distance
+# tree_data <- processed_data[,c(28,65,86,88,180:197,199)]
 col_names <- names(tree_data)
 tree_data[,col_names] <- lapply(tree_data[,col_names] , factor)
+
+#Cont Distance
+# tree_data[,17] <- as.integer(tree_data[,17])
+# tree_data[,18] <- as.integer(tree_data[,18])
+# tree_data[,19] <- as.integer(tree_data[,19])
+# tree_data[,20] <- as.integer(tree_data[,20])
+
 
 train_ind <- sample(30491, 24393)
 tree_train <- tree_data[train_ind,]
@@ -64,12 +73,23 @@ Results
 ```{r, fig.height=10, fig.width=10}
 
 fancyRpartPlot(full_tree, caption = "Full Tree", cex = .6)
+
+jpeg(file="Shrinkage Tuning Full Tree.jpg")
 plotcp(full_tree)
+dev.off()
 
+
+png(file="Prunned Tree.png", width = 750, height = 500)
 fancyRpartPlot(pruned_tree, caption = "Pruned Tree", cex = .6)
-plotcp(pruned_tree)
+dev.off()
 
-fancyRpartPlot(prunedest_tree, caption = "Pruned Tree", cex = .6)
+jpeg(file="Shrinkage Tuning Pruned Tree.jpg")
+plotcp(pruned_tree)
+dev.off()
+
+png(file="Prunnedest Tree.png", width = 1000, height = 600)
+fancyRpartPlot(prunedest_tree, caption = "Pruned Tree", cex =1.4)
+dev.off()
 
 error_df <- data.frame(error = c(test_error_ft, test_error_pt, test_error_mpt),
                        TreeType = c("Full Tree", "Pruned Tree", "Most Pruned Tree"))
@@ -84,7 +104,16 @@ ggplot(data = error_df, aes(x = TreeType, y = error)) +
   ylim(0,.3) + 
   geom_text(aes(label=round(error,4)), vjust=1.6, color="white", size=6)
 
-class_pred_ft
-class_pred_pt
-class_pred_mpt
+t(class_pred_ft)
+t(class_pred_ft) / rowSums(t(class_pred_ft))
+
+t(class_pred_pt)
+t(class_pred_pt) / rowSums(t(class_pred_pt))
+
+t(class_pred_mpt)
+t(class_pred_mpt) / rowSums(t(class_pred_mpt))
+
+
+ unique(pruned_tree$frame$var)
+ unique(prunedest_tree$frame$var)
 ```
