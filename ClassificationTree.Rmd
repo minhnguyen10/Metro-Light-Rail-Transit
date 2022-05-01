@@ -17,10 +17,13 @@ library(rpart.plot)
 library(rattle)
 set.seed(1)
 #Disc Distance
-tree_data <- processed_data[,c(28,65,86,88,180:191,196,197,199:203)]
+tree_data <- processed_data[,c(28,65,86,88,146,180:183,185:191,196,197,199:203)]
+
 #Cont Distance
 # tree_data <- processed_data[,c(28,65,86,88,180:197,199)]
+
 col_names <- names(tree_data)
+
 tree_data[,col_names] <- lapply(tree_data[,col_names] , factor)
 
 #Cont Distance
@@ -37,7 +40,7 @@ tree_test <- tree_data[-train_ind,]
 
 Full tree, no pruning
 ```{r, fig.height=20, fig.width=20}
-full_tree <- rpart(as.factor(Label) ~ ., data = tree_train, method = "class", xval = 10, cp = .001)
+full_tree <- rpart(as.factor(Label) ~ ., data = tree_train, method = "class", xval = 10, cp = .0001)
 
 class_pred_ft <- table(predict(full_tree, type="class", newdata = tree_test), tree_test$Label)
 test_error_ft <- 1-sum(diag(class_pred_ft))/sum(class_pred_ft)
@@ -46,7 +49,7 @@ test_error_ft <- 1-sum(diag(class_pred_ft))/sum(class_pred_ft)
 
 Pruned Tree
 ```{r, fig.height=10, fig.width=10}
-pruned_tree <- rpart(as.factor(Label) ~ ., data = tree_train, method = "class", xval = 10, cp = .0044)
+pruned_tree <- rpart(as.factor(Label) ~ ., data = tree_train, method = "class", xval = 10, cp = .0016)
 
 # printcp(pruned_tree)
 # plotcp(pruned_tree)
@@ -57,7 +60,7 @@ test_error_pt <- 1-sum(diag(class_pred_pt))/sum(class_pred_pt)
 ```
 Most Pruned
 ```{r, fig.height=10, fig.width=10}
-prunedest_tree <- rpart(as.factor(Label) ~ ., data = tree_train, method = "class", xval = 10, cp = .015)
+prunedest_tree <- rpart(as.factor(Label) ~ ., data = tree_train, method = "class", xval = 10, cp = .0052)
 
 # printcp(pruned_tree)
 # plotcp(pruned_tree)
@@ -79,16 +82,16 @@ plotcp(full_tree)
 dev.off()
 
 
-png(file="Prunned Tree.png", width = 750, height = 500)
-fancyRpartPlot(pruned_tree, caption = "Pruned Tree", cex = .6)
+png(file="Prunned Tree.png", width = 1500, height = 1000)
+fancyRpartPlot(pruned_tree, caption = "Pruned Tree", cex = .8)
 dev.off()
 
 jpeg(file="Shrinkage Tuning Pruned Tree.jpg")
 plotcp(pruned_tree)
 dev.off()
 
-png(file="Prunnedest Tree.png", width = 1000, height = 600)
-fancyRpartPlot(prunedest_tree, caption = "Pruned Tree", cex =1.4)
+png(file="Prunnedest Tree.png", width = 1500, height = 900)
+fancyRpartPlot(prunedest_tree, caption = "Most Pruned Tree", cex =1.5)
 dev.off()
 
 error_df <- data.frame(error = c(test_error_ft, test_error_pt, test_error_mpt),
@@ -113,7 +116,7 @@ t(class_pred_pt) / rowSums(t(class_pred_pt))
 t(class_pred_mpt)
 t(class_pred_mpt) / rowSums(t(class_pred_mpt))
 
-
+ unique(full_tree$frame$var)
  unique(pruned_tree$frame$var)
  unique(prunedest_tree$frame$var)
 ```
